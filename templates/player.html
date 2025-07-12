@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ title }} - Noctella Video</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Material Design Lite -->
+  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css" />
+  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+
+  <!-- Video.js -->
+  <link href="https://vjs.zencdn.net/8.20.0/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.20.0/video.min.js"></script>
+<!-- OGP対応 -->
+<meta property="og:type" content="video.other" />
+<meta property="og:title" content="{{ title }}" />
+<meta property="og:description" content="{{ description }}" />
+<meta property="og:image" content="{{ url_for('static', filename='thumb.jpg', _external=True) }}" />
+<meta property="og:video" content="{{ stream_url }}" />
+<meta property="og:video:type" content="application/x-mpegURL" />
+<meta property="og:video:width" content="1280" />
+<meta property="og:video:height" content="720" />
+
+<!-- Twitterカード対応（任意） -->
+<meta name="twitter:card" content="player" />
+<meta name="twitter:title" content="{{ title }}" />
+<meta name="twitter:description" content="{{ description }}" />
+<meta name="twitter:image" content="{{ url_for('static', filename='thumb.jpg', _external=True) }}" />
+<meta name="twitter:player" content="{{ stream_url }}" />
+<meta name="twitter:player:width" content="1280" />
+<meta name="twitter:player:height" content="720" />
+
+  <style>
+    body {
+      margin: 0;
+      font-family: 'Roboto', 'Helvetica', 'Arial', sans-serif;
+      background-color: var(--bg-color, #121212);
+      color: var(--text-color, #fff);
+      transition: background-color 0.3s, color 0.3s;
+    }
+
+    body.light {
+      --bg-color: #fafafa;
+      --text-color: #222;
+    }
+
+    header.mdl-layout__header {
+      background-color: #6200ee;
+      color: white;
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      height: 64px;
+    }
+
+    .header-title {
+      font-size: 1.5rem;
+      font-weight: 500;
+    }
+
+    #toggle-theme {
+      background: none;
+      border: none;
+      color: inherit;
+      font-size: 1rem;
+      cursor: pointer;
+      outline: none;
+      user-select: none;
+      padding: 6px 12px;
+      border-radius: 4px;
+      transition: background-color 0.3s;
+    }
+
+    #toggle-theme:hover {
+      background-color: rgba(255,255,255,0.1);
+    }
+
+    main {
+      max-width: 1280px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+    }
+
+    .player-container {
+      background-color: var(--player-bg, #1e1e1e);
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.7);
+      margin-bottom: 2rem;
+      transition: background-color 0.3s;
+    }
+
+    body.light .player-container {
+      --player-bg: #fff;
+    }
+
+    .video-js {
+      width: 100% !important;
+      max-height: 720px;
+      background-color: black;
+    }
+
+    .video-meta {
+      margin-top: 1rem;
+    }
+
+    .video-title {
+      font-size: 1.5rem;
+      font-weight: bold;
+      margin-bottom: 0.5rem;
+    }
+
+    .video-description {
+      white-space: pre-wrap;
+      line-height: 1.5;
+      font-size: 1rem;
+      opacity: 0.85;
+    }
+  </style>
+</head>
+<body>
+  <header class="mdl-layout__header">
+    <div class="mdl-layout__header-row">
+      <span class="header-title">Noctella Video Streaming</span>
+    </div>
+  </header>
+
+  <main>
+    <div class="player-container">
+      <video
+        id="my-video"
+        class="video-js vjs-default-skin"
+        controls
+        preload="auto"
+        data-setup='{}'
+      >
+        <source src="{{ stream_url }}" type="application/x-mpegURL" />
+        <p class="vjs-no-js">
+          JavaScriptが無効です。ブラウザの設定を確認してください。
+        </p>
+      </video>
+    </div>
+
+    <div class="video-meta">
+      <div class="video-title">{{ title }}</div>
+      <div class="video-description">{{ description }}</div>
+      <br>
+      <script>
+  // 画面幅からスマートフォンを判定（例: 768px以下）
+  const isMobile = window.innerWidth <= 768;
+
+  // ↓ ユーザー手動で移動するボタンを表示したい場合（任意）
+   const btn = document.createElement('button');
+   btn.textContent = '📱 スマートフォン用プレイヤーに切り替え';
+   btn.style.cssText = 'position:fixed;bottom:16px;right:16px;padding:10px 20px;font-size:1rem;';
+   btn.onclick = () => {
+     const url = new URL(window.location.href);
+     const pathParts = url.pathname.split('/');
+     const sessionId = pathParts[pathParts.length - 1];
+     const searchParams = url.search;
+     location.href = `/sm-watch/${sessionId}${searchParams}`;
+   };
+   if (isMobile) document.body.appendChild(btn);
+</script>
+
+    </div>
+  </main>
+
+  <script>
+  const player = videojs('my-video');
+  const body = document.body;
+  const toggleBtn = document.getElementById('toggle-theme');
+  const videoId = '{{ stream_url }}'; // 一意な識別子（URLでOK）
+  const videoTitle = '{{ title | tojson }}';
+  const videoDesc = '{{ description | tojson }}';
+
+  // 音量の保存/復元
+  player.ready(() => {
+    const savedVolume = localStorage.getItem('videoVolume');
+    if (savedVolume !== null) {
+      player.volume(parseFloat(savedVolume));
+    }
+
+    // 再生位置の復元
+    const savedTime = localStorage.getItem(`videoTime_${videoId}`);
+    if (savedTime) {
+      player.currentTime(parseFloat(savedTime));
+    }
+  });
+
+  player.on('volumechange', () => {
+    localStorage.setItem('videoVolume', player.volume());
+  });
+
+  // 再生位置を定期保存
+  setInterval(() => {
+    const currentTime = player.currentTime();
+    localStorage.setItem(`videoTime_${videoId}`, currentTime);
+  }, 5000); // 5秒ごと
+
+  // 再生履歴を保存
+  function saveHistory() {
+const history = JSON.parse(localStorage.getItem('videoHistory') || '[]');
+
+// 不正なURLにならないよう、session_idだけを渡す
+const sessionId = window.location.pathname.split("/")[2]; // /watch/<session_id>
+const params = new URLSearchParams(window.location.search);
+const title = params.get("title");
+const description = params.get("description");
+
+const historyItem = {
+  url: `/watch/${sessionId}?title=${encodeURIComponent(title)}&description=${encodeURIComponent(description)}`,
+  title,
+  description,
+  time: Date.now()
+};
+
+// 重複削除
+const existsIndex = history.findIndex(h => h.url === historyItem.url);
+if (existsIndex !== -1) history.splice(existsIndex, 1);
+
+// 先頭に追加
+history.unshift(historyItem);
+
+// 10件までに制限
+localStorage.setItem('videoHistory', JSON.stringify(history.slice(0, 10)));
+
+  }
+
+  // 再生終了時または離脱時に保存
+  player.on('ended', saveHistory);
+  window.addEventListener('beforeunload', saveHistory);
+
+</script>
+
+</body>
+</html>

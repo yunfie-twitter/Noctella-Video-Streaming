@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>{{ title }} - Noctella Mobile Player</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no" />
+  <meta name="theme-color" content="#000000" />
+
+  <!-- Material Icons & Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet" />
+
+  <!-- video.js -->
+  <link href="https://vjs.zencdn.net/8.20.0/video-js.css" rel="stylesheet" />
+  <script src="https://vjs.zencdn.net/8.20.0/video.min.js"></script>
+
+  <style>
+    body {
+      margin: 0;
+      background: #121212;
+      color: #ffffff;
+      font-family: 'Noto Sans JP', sans-serif;
+    }
+
+    .header {
+      background: #1f1f1f;
+      padding: 12px;
+      text-align: center;
+      font-size: 1.2em;
+      font-weight: bold;
+      border-bottom: 1px solid #333;
+    }
+
+    .video-container {
+      width: 100%;
+      max-height: 50vh;
+      background: #000;
+    }
+
+    .video-js {
+      width: 100% !important;
+      height: 250px;
+      background: #000;
+    }
+
+    .meta {
+      padding: 16px;
+    }
+
+    .meta-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+
+    .meta-description {
+      font-size: 0.95em;
+      opacity: 0.9;
+      white-space: pre-wrap;
+    }
+
+    .footer {
+      text-align: center;
+      margin: 20px 0;
+      font-size: 0.9em;
+      color: #aaa;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">📱 Noctella Player</div>
+
+  <div class="video-container">
+    <video
+      id="mobile-player"
+      class="video-js vjs-default-skin"
+      controls
+      preload="auto"
+      playsinline
+      webkit-playsinline
+      data-setup="{}"
+    >
+      <source src="{{ stream_url }}" type="application/x-mpegURL" />
+      <p class="vjs-no-js">JavaScriptを有効にしてください。</p>
+    </video>
+  </div>
+
+  <div class="meta">
+    <div class="meta-title">{{ title }}</div>
+    <div class="meta-description">{{ description }}</div>
+  </div>
+
+  <div class="footer">
+    © 2025 Noctella Video
+  </div>
+
+  <script>
+    const player = videojs('mobile-player');
+
+    // 再生位置の保存
+    const videoKey = 'playback_' + encodeURIComponent('{{ stream_url }}');
+
+    player.ready(() => {
+      const savedTime = localStorage.getItem(videoKey);
+      if (savedTime) {
+        player.currentTime(parseFloat(savedTime));
+      }
+    });
+
+    player.on('timeupdate', () => {
+      localStorage.setItem(videoKey, player.currentTime());
+    });
+
+    player.on('ended', () => {
+      localStorage.removeItem(videoKey);
+    });
+  </script>
+</body>
+</html>
