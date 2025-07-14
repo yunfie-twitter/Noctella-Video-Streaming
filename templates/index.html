@@ -259,29 +259,31 @@
         document.getElementById('urlForm').dispatchEvent(new Event('submit'));
     });
 
-    // 人気検索キーワードサジェスト
-    async function loadSuggestions() {
-        try {
-            const res = await fetch('/api/search/suggestions');
-            const data = await res.json();
-            if(data.success && Array.isArray(data.suggestions)) {
-                const suggestionsDiv = document.getElementById('suggestions');
-                suggestionsDiv.innerHTML = '';
-                data.suggestions.forEach(item => {
-                    const tag = document.createElement('span');
-                    tag.className = 'suggestion-tag';
-                    tag.textContent = item.query;
-                    tag.onclick = () => {
-                        document.getElementById('searchInput').value = item.query;
-                        document.getElementById('searchForm').dispatchEvent(new Event('submit'));
-                    };
-                    suggestionsDiv.appendChild(tag);
-                });
-            }
-        } catch(e) {
-            // 無視
+// 人気検索キーワードサジェスト（上位5件のみ表示）
+async function loadSuggestions() {
+    try {
+        const res = await fetch('/api/search/suggestions');
+        const data = await res.json();
+        if (data.success && Array.isArray(data.suggestions)) {
+            const suggestionsDiv = document.getElementById('suggestions');
+            suggestionsDiv.innerHTML = '';
+            // ここでslice(0, 5)で最大5件に絞る
+            data.suggestions.slice(0, 5).forEach(item => {
+                const tag = document.createElement('span');
+                tag.className = 'suggestion-tag';
+                tag.textContent = item.query;
+                tag.onclick = () => {
+                    document.getElementById('searchInput').value = item.query;
+                    document.getElementById('searchForm').dispatchEvent(new Event('submit'));
+                };
+                suggestionsDiv.appendChild(tag);
+            });
         }
+    } catch (e) {
+        // 無視
     }
+}
+
     loadSuggestions();
 </script>
 </body>
