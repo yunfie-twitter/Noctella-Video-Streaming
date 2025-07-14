@@ -12,7 +12,7 @@ import threading
 import yt_dlp
 from functools import lru_cache
 from datetime import datetime
-from flask import Flask, request, render_template, send_from_directory, redirect, abort
+from flask import Flask, request, render_template, send_from_directory, redirect, abort, jsonify
 from urllib.parse import urlparse, parse_qs, unquote, urlencode
 
 app = Flask(__name__)
@@ -383,7 +383,7 @@ def process_video(video_id, original_url):
     
     # m3u8_extractor.pyを使用してストリーミングURLを取得
     extractor = subprocess.run(
-        ['python', 'm3u8_extractor.py', original_url, '--json'],
+        ['python3', 'm3u8_extractor.py', original_url, '--json'],
         capture_output=True, text=True
     )
     
@@ -429,6 +429,7 @@ def process_video(video_id, original_url):
         '-b:a', '128k',
         '-f', 'hls',
         '-hls_time', '4',
+        '-loglevel', 'info',
         '-hls_playlist_type', 'event',
         '-hls_segment_filename', os.path.join(cache_dir, 'segment_%03d.ts'),
         master_path
@@ -785,6 +786,42 @@ def api_delete_comment(comment_id):
             'success': False,
             'error': str(e)
         }, ensure_ascii=False), 500
+
+@app.route('/api/related')
+def api_related():
+    video_id = request.args.get('v', '').strip()
+    title = request.args.get('title', '').strip()
+    if not title:
+        return jsonify({'success': False, 'error': 'タイトルが必要です'}), 400
+
+    try:
+        # 検索キーワードはタイトル＋"関連"などで調整
+        query = f"{title} 関連"
+        options = {
+            'quiet': True,
+            'extract_flat': True,
+            'skip_download': True,
+            'forcejson': True,
+            'no_warnings': True,
+        }
+        with yt_dlp.YoutubeDL(options) as ydl:
+            result = ydl.extract_info(f"ytsearch10:{query}", download=False)
+            videos = []
+            for entry in result['entries']:
+                # 今見ている動画は除外
+                if entry.get('id') == video_id:
+                    continue
+                videos.append({
+                    'id': entry.get('id', ''),
+                    'title': entry.get('title', ''),
+                    'thumbnail': f"https://img.youtube.com/vi/{entry.get('id','')}/maxresdefault.jpg",
+                    'uploader': entry.get('uploader', ''),
+                    'duration': entry.get('duration', 0)
+                })
+            return jsonify({'success': True, 'videos': videos})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
 
 # アプリケーション起動時にデータベースを初期化
 if __name__ == '__main__':
