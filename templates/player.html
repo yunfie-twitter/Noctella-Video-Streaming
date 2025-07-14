@@ -1,0 +1,1643 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }} - Noctella Video Streaming</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <link href="https://vjs.zencdn.net/8.5.2/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/8.5.2/video.min.js"></script>
+    <meta property="og:title" content="{{ title }}">
+    <meta property="og:description" content="{{ description[:200] }}...">
+    <meta property="og:type" content="video.other">
+    <meta property="og:url" content="{{ request.url }}">
+    <meta name="description" content="{{ description[:150] }}...">
+    <style>
+        :root {
+            --md-background: #fafafa;
+            --md-surface: #fff;
+            --md-on-surface: #212121;
+            --md-primary: #3f51b5;
+            --md-secondary: #ff4081;
+            --md-text-secondary: #757575;
+        }
+        body.dark {
+            --md-background: #121212;
+            --md-surface: #1e1e1e;
+            --md-on-surface: #fff;
+            --md-primary: #90caf9;
+            --md-secondary: #f48fb1;
+            --md-text-secondary: #b0b0b0;
+        }
+        body {
+            background: var(--md-background);
+            color: var(--md-on-surface);
+            font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; 
+            padding: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .mdl-layout__header {
+            background: var(--md-primary) !important;
+        }
+        .mdl-layout-title { 
+            color: #fff !important; 
+            font-weight: 500; 
+        }
+        .mdl-navigation__link { 
+            color: #fff !important; 
+        }
+        .theme-button { 
+            color: #fff !important; 
+            margin-left: 8px; 
+        }
+        .container { 
+            max-width: 1920px; 
+            margin: 0 auto; 
+            padding: 24px 16px; 
+        }
+
+        /* 標準レイアウト (1550px未満) */
+        .main-content { 
+            display: flex; 
+            flex-direction: column; 
+            gap: 24px; 
+        }
+        .video-container { 
+            background: var(--md-surface); 
+            border-radius: 8px; 
+            overflow: hidden; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); 
+        }
+        .video-wrapper { 
+            position: relative; 
+            width: 100%; 
+            height: 0; 
+            padding-bottom: 56.25%; 
+        }
+        .video-js { 
+            position: absolute; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+        }
+        .video-info { 
+            background: var(--md-surface); 
+            border-radius: 8px; 
+            padding: 24px; 
+            color: var(--md-on-surface); 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .video-title { 
+            font-size: 24px; 
+            font-weight: 500; 
+            margin: 0 0 16px 0; 
+            line-height: 1.3; 
+        }
+        .description-container { 
+            position: relative; 
+        }
+        .description-text { 
+            white-space: pre-wrap; 
+            word-break: break-word; 
+            color: var(--md-text-secondary); 
+            line-height: 1.6; 
+            font-size: 14px; 
+            transition: max-height 0.3s ease; 
+            overflow: hidden; 
+        }
+        .description-text.collapsed { 
+            max-height: 100px; 
+            position: relative; 
+        }
+        .description-text.collapsed::after { 
+            content: ''; 
+            position: absolute; 
+            bottom: 0; 
+            left: 0; 
+            right: 0; 
+            height: 20px; 
+            background: linear-gradient(transparent, var(--md-surface)); 
+        }
+        .description-toggle { 
+            margin-top: 12px; 
+            background: none; 
+            border: none; 
+            color: var(--md-primary); 
+            cursor: pointer; 
+            font-size: 14px; 
+            font-weight: 500; 
+            padding: 8px 0; 
+            transition: color 0.3s; 
+        }
+        .description-toggle:hover { 
+            color: var(--md-secondary); 
+        }
+        .description-toggle:focus {
+            outline: 2px solid var(--md-primary);
+            outline-offset: 2px;
+        }
+
+        /* コメント欄のスタイル */
+        .comments-section { 
+            background: var(--md-surface); 
+            border-radius: 8px; 
+            padding: 24px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); 
+        }
+        .comments-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--md-text-secondary);
+        }
+        .comments-header h3 {
+            margin: 0;
+            font-size: 18px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .comments-count {
+            background: var(--md-primary);
+            color: white;
+            border-radius: 12px;
+            padding: 2px 8px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .comment-form {
+            margin-bottom: 24px;
+            padding: 16px;
+            background: var(--md-background);
+            border-radius: 8px;
+            border: 1px solid var(--md-text-secondary);
+        }
+        .comment-form-row {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+        .comment-form-row input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--md-text-secondary);
+            border-radius: 4px;
+            background: var(--md-surface);
+            color: var(--md-on-surface);
+            font-size: 14px;
+        }
+        .comment-form-row input:focus {
+            outline: none;
+            border-color: var(--md-primary);
+        }
+        .comment-textarea {
+            width: 100%;
+            min-height: 80px;
+            padding: 8px 12px;
+            border: 1px solid var(--md-text-secondary);
+            border-radius: 4px;
+            background: var(--md-surface);
+            color: var(--md-on-surface);
+            font-size: 14px;
+            font-family: inherit;
+            resize: vertical;
+            margin-bottom: 12px;
+            box-sizing: border-box;
+}
+        .comment-textarea:focus {
+            outline: none;
+            border-color: var(--md-primary);
+        }
+        .comment-submit {
+            background: var(--md-primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .comment-submit:hover {
+            background: var(--md-secondary);
+        }
+        .comment-submit:disabled {
+            background: var(--md-text-secondary);
+            cursor: not-allowed;
+        }
+        .comments-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .comment-item {
+            padding: 16px;
+            border-bottom: 1px solid var(--md-text-secondary);
+            transition: background 0.3s;
+        }
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+        .comment-item:hover {
+            background: var(--md-background);
+        }
+        .comment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        .comment-author {
+            font-weight: 500;
+            color: var(--md-primary);
+            font-size: 14px;
+        }
+        /* 概要欄リンクのスタイル */
+.description-link {
+    color: var(--md-primary);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    transition: all 0.3s ease;
+    word-break: break-all;
+}
+
+.description-link:hover {
+    color: var(--md-secondary);
+    border-bottom-color: var(--md-secondary);
+    text-decoration: none;
+}
+
+.description-link:visited {
+    color: var(--md-text-secondary);
+}
+
+/* ダークモード対応 */
+body.dark .description-link {
+    color: var(--md-primary);
+}
+
+body.dark .description-link:hover {
+    color: var(--md-secondary);
+}
+
+body.dark .description-link:visited {
+    color: var(--md-text-secondary);
+}
+
+/* リンクアイコンの追加 */
+.description-link::after {
+    content: "↗";
+    font-size: 11px;
+    margin-left: 2px;
+    opacity: 0.7;
+}
+.related-videos-list {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 8px;
+  scroll-snap-type: x mandatory;
+}
+.related-video-card {
+  min-width: 220px;
+  max-width: 240px;
+  background: var(--md-surface, #fff);
+  border-radius: 8px;
+  box-shadow: 0 1px 6px rgba(0,0,0,0.08);
+  display: flex;
+  flex-direction: column;
+  cursor: pointer;
+  scroll-snap-align: start;
+  transition: box-shadow 0.2s;
+}
+.related-video-card:hover {
+  box-shadow: 0 4px 16px rgba(0,0,0,0.18);
+}
+.related-video-thumb {
+  width: 100%;
+  aspect-ratio: 16/9;
+  object-fit: cover;
+  border-radius: 8px 8px 0 0;
+}
+.related-video-info {
+  padding: 8px 12px 12px 12px;
+}
+.related-video-title {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 4px;
+  color: var(--md-on-surface, #212121);
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.related-video-meta {
+  font-size: 12px;
+  color: var(--md-text-secondary, #757575);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+@media (max-width: 600px) {
+  .related-video-card { min-width: 150px; max-width: 180px; }
+}
+
+
+        .comment-time {
+            font-size: 12px;
+            color: var(--md-text-secondary);
+        }
+        .comment-content {
+            color: var(--md-on-surface);
+            line-height: 1.5;
+            font-size: 14px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .comment-actions {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+        }
+        .comment-delete {
+            background: none;
+            border: none;
+            color: var(--md-text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 4px;
+            transition: color 0.3s, background 0.3s;
+        }
+        .comment-delete:hover {
+            color: #f44336;
+            background: rgba(244, 67, 54, 0.1);
+        }
+        .comment-delete:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .no-comments {
+            text-align: center;
+            color: var(--md-text-secondary);
+            font-style: italic;
+            padding: 40px 20px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: var(--md-text-secondary);
+        }
+        .auth-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+            padding: 8px 12px;
+            background: var(--md-primary);
+            color: white;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        
+        /* 大画面用 2カラムレイアウト (1550px以上) */
+        @media (min-width: 1550px) {
+            .main-content { 
+                flex-direction: row; 
+                gap: 32px; 
+                align-items: flex-start; 
+            }
+            .video-section { 
+                flex: 0 0 65%; 
+                max-width: 65%; 
+            }
+            .info-section { 
+                flex: 0 0 35%; 
+                max-width: 35%; 
+                display: flex; 
+                flex-direction: column; 
+                gap: 24px; 
+            }
+            .video-title { 
+                font-size: 28px; 
+                margin-bottom: 20px; 
+            }
+            .description-text.collapsed { 
+                max-height: 200px; 
+            }
+        }
+        
+        /* 中画面レイアウト (768px - 1549px) */
+        @media (max-width: 1549px) and (min-width: 769px) { 
+            .container { 
+                max-width: 960px; 
+            } 
+        }
+        
+        /* モバイルレイアウト (768px以下) */
+        @media (max-width: 768px) {
+            .container { 
+                padding: 16px 8px; 
+            }
+            .video-info { 
+                padding: 16px; 
+            }
+            .video-title { 
+                font-size: 20px; 
+            }
+            .comments-section {
+                padding: 16px;
+            }
+            .comment-form-row {
+                flex-direction: column;
+            }
+        }
+        
+        /* 音量表示 */
+        .volume-info { 
+            position: fixed; 
+            bottom: 20px; 
+            right: 20px; 
+            background: var(--md-surface); 
+            color: var(--md-on-surface); 
+            padding: 8px 16px; 
+            border-radius: 20px; 
+            font-size: 14px; 
+            opacity: 0; 
+            transition: opacity 0.3s; 
+            z-index: 1000; 
+            pointer-events: none; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08); 
+            display: flex; 
+            align-items: center; 
+            gap: 4px; 
+        }
+        .volume-info.show { 
+            opacity: 1; 
+        }
+
+        /* ミニプレーヤー */
+        .mini-player {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 300px;
+            height: 200px;
+            background: var(--md-surface);
+            border-radius: 8px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+            z-index: 10000;
+            opacity: 0;
+            transform: translateY(100px);
+            transition: all 0.3s ease;
+            overflow: hidden;
+            cursor: move;
+        }
+
+        .mini-player.visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .mini-player-video {
+            width: 100%;
+            height: calc(100% - 40px);
+            position: relative;
+        }
+
+        .mini-player-video .video-js {
+            width: 100%;
+            height: 100%;
+        }
+
+        .mini-player-controls {
+            height: 40px;
+            background: var(--md-surface);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 12px;
+            border-top: 1px solid var(--md-text-secondary);
+        }
+
+        .mini-player-controls button {
+            background: none;
+            border: none;
+            color: var(--md-on-surface);
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .mini-player-controls button:hover {
+            background: rgba(0,0,0,0.1);
+        }
+
+        .mini-player-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--md-on-surface);
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        /* モバイルでミニプレーヤーを調整 */
+        @media (max-width: 768px) {
+            .mini-player {
+                width: 250px;
+                height: 160px;
+                bottom: 10px;
+                right: 10px;
+            }
+        }
+        @media screen and (max-width: 1024px) {
+    .mdl-layout__header-row {
+        height: 56px;
+        padding: 0 16px 0 17px;
+    }
+}
+        /* エラー状態 */
+        .error {
+            background-color: #ffebee;
+            color: #c62828;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        body.dark .error {
+            background-color: #1a1a1a;
+            color: #ef5350;
+        }
+    </style>
+</head>
+<body>
+<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+            <span class="mdl-layout-title">
+                <i class="material-icons" style="vertical-align: middle; margin-right: 8px;">play_circle_filled</i>
+                Noctella
+            </span>
+            <div class="mdl-layout-spacer"></div>
+            <nav class="mdl-navigation">
+                <a class="mdl-navigation__link" href="/">ホーム</a>
+                <a class="mdl-navigation__link" href="/history">履歴</a>
+                <a class="mdl-navigation__link" href="/api/videos">API</a>
+                <button id="themeToggle" class="mdl-button mdl-js-button mdl-button--icon theme-button" title="テーマ切替">
+                    <i class="material-icons">dark_mode</i>
+                </button>
+            </nav>
+        </div>
+    </header>
+    <main class="mdl-layout__content">
+        <div class="container">
+            <div class="main-content">
+                <div class="video-section">
+                    <div class="video-container" id="mainVideoContainer">
+                        <div class="video-wrapper">
+                            <video
+                                id="videoPlayer"
+                                class="video-js vjs-default-skin"
+                                controls
+                                preload="auto"
+                                data-setup="{}">
+                                <source src="{{ stream_url }}" type="application/x-mpegURL">
+                                <p class="vjs-no-js">
+                                    Video.jsを有効にするには、JavaScriptを有効にしてください。
+                                    <a href="https://videojs.com/html5-video-support/" target="_blank">
+                                        HTML5 video support
+                                    </a>
+                                </p>
+                            </video>
+                        </div>
+                    </div>
+                </div>
+                <div class="info-section">
+                    <div class="video-info">
+                        <h1 class="video-title">{{ title }}</h1>
+                        {% if description %}
+                        <div class="description-container">
+                            <div class="description-text {% if description|length > 300 %}collapsed{% endif %}" id="descriptionText">{{ description | e }}</div>
+                            {% if description|length > 300 %}
+                            <button class="description-toggle" id="descriptionToggle">もっと見る</button>
+                            {% endif %}
+                        </div>
+                        {% endif %}
+                    </div>
+                    <!-- コメント欄（本人認証対応版） -->
+                    <div class="comments-section" id="commentsSection">
+                        <div class="related-videos-section" id="relatedVideosSection">
+  <h3>
+    <i class="material-icons" style="vertical-align:middle;">playlist_play</i>
+    関連動画
+  </h3>
+  <div id="relatedVideos" class="related-videos-list"></div>
+</div><br>
+                        <div class="comments-header">
+                            <h3>
+                                <i class="material-icons">comment</i>
+                                コメント
+                                <span class="comments-count" id="commentsCount">0</span>
+                            </h3>
+                        </div>
+                        
+                        <!-- 認証状態表示 -->
+                        <div class="auth-status" id="authStatus">
+                            <i class="material-icons" style="font-size: 16px;">verified_user</i>
+                            <span id="authStatusText">認証中...</span>
+                        </div>
+                        
+                        <!-- コメント投稿フォーム -->
+                        <div class="comment-form">
+                            <div class="comment-form-row">
+                                <input type="text" id="commentAuthor" placeholder="ユーザー名" maxlength="50">
+                            </div>
+                            <textarea id="commentContent" class="comment-textarea" placeholder="コメントを入力してください..." maxlength="500"></textarea>
+                            <button id="commentSubmit" class="comment-submit" disabled>
+                                <i class="material-icons" style="vertical-align: middle; margin-right: 4px; font-size: 16px;">send</i>
+                                コメントを投稿
+                            </button>
+                        </div>
+                        
+                        <!-- コメント一覧 -->
+                        <div class="comments-list" id="commentsList">
+                            <div class="loading" id="commentsLoading">コメントを読み込み中...</div>
+                        </div>
+</div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- ミニプレーヤー -->
+<div class="mini-player" id="miniPlayer">
+    <div class="mini-player-video">
+        <video
+            id="miniVideoPlayer"
+            class="video-js vjs-default-skin"
+            data-setup="{}">
+            <source src="{{ stream_url }}" type="application/x-mpegURL">
+        </video>
+    </div>
+    <div class="mini-player-controls">
+        <div class="mini-player-title">{{ title[:30] }}...</div>
+        <div style="display: flex; gap: 8px;">
+            <button onclick="backToMain()" title="メインプレーヤーに戻る">
+                <i class="material-icons" style="font-size: 18px;">open_in_full</i>
+            </button>
+            <button onclick="closeMiniPlayer()" title="閉じる">
+                <i class="material-icons" style="font-size: 18px;">close</i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- 音量表示 -->
+<div class="volume-info" id="volumeInfo">
+    <i class="material-icons">volume_up</i>
+    <span id="volumeText">100%</span>
+</div>
+
+<!-- データを安全にJavaScriptに渡すためのスクリプトタグ -->
+<script type="application/json" id="video-data">
+{
+    "title": {{ title | tojson }},
+    "description": {{ description[:100] | tojson }},
+    "videoId": "{{ request.args.get('v', '') | e }}",
+    "streamUrl": "{{ stream_url | e }}"
+}
+</script>
+
+<script>
+    // データを安全に取得
+    const videoData = JSON.parse(document.getElementById('video-data').textContent);
+    
+    // プレーヤー変数
+    let mainPlayer;
+    let miniPlayer;
+    let isMiniPlayerVisible = false;
+    let currentTime = 0;
+    let currentVolume = parseFloat(localStorage.getItem('videoVolume')) || 1.0;
+    let isDragging = false;
+    
+    // 認証関連変数
+    let userSessionId = localStorage.getItem('userSessionId');
+    let isAuthenticated = false;
+    
+    // テーマ切替
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            body.classList.add('dark');
+            themeToggle.innerHTML = '<i class="material-icons">light_mode</i>';
+        } else {
+            body.classList.remove('dark');
+            themeToggle.innerHTML = '<i class="material-icons">dark_mode</i>';
+        }
+    }
+    
+    let currentTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(currentTheme);
+    
+    themeToggle.addEventListener('click', function() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', currentTheme);
+        applyTheme(currentTheme);
+    });
+
+    // 概要欄の展開・折りたたみ
+    const descriptionText = document.getElementById('descriptionText');
+    const descriptionToggle = document.getElementById('descriptionToggle');
+    
+    if (descriptionToggle && descriptionText) {
+        descriptionToggle.addEventListener('click', function() {
+            const isCollapsed = descriptionText.classList.contains('collapsed');
+            if (isCollapsed) {
+                descriptionText.classList.remove('collapsed');
+                descriptionToggle.textContent = '折りたたむ';
+            } else {
+                descriptionText.classList.add('collapsed');
+                descriptionToggle.textContent = 'もっと見る';
+            }
+        });
+    }
+
+    // 音量表示機能
+    const volumeInfo = document.getElementById('volumeInfo');
+    const volumeText = document.getElementById('volumeText');
+    let volumeTimeout;
+    
+    function showVolumeInfo(volume) {
+        const percentage = Math.round(volume * 100);
+        volumeText.textContent = percentage + '%';
+        
+        const icon = volumeInfo.querySelector('.material-icons');
+        if (percentage === 0) {
+            icon.textContent = 'volume_off';
+        } else if (percentage < 50) {
+            icon.textContent = 'volume_down';
+        } else {
+            icon.textContent = 'volume_up';
+        }
+        
+        volumeInfo.classList.add('show');
+        clearTimeout(volumeTimeout);
+        volumeTimeout = setTimeout(function() {
+            volumeInfo.classList.remove('show');
+        }, 2000);
+    }
+
+    // 認証システムクラス
+    class AuthSystem {
+        constructor() {
+            this.initializeSession();
+        }
+
+        async initializeSession() {
+            const authStatusEl = document.getElementById('authStatusText');
+            
+            try {
+                if (!userSessionId) {
+                    // 新しいセッションを作成
+                    const response = await fetch('/api/session', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        userSessionId = data.session_id;
+                        localStorage.setItem('userSessionId', userSessionId);
+                        isAuthenticated = true;
+                        authStatusEl.textContent = '認証済み - 投稿したコメントを削除できます';
+                    } else {
+                        throw new Error('セッション作成に失敗しました');
+                    }
+                } else {
+                    // 既存のセッションを使用
+                    isAuthenticated = true;
+                    authStatusEl.textContent = '認証済み - 投稿したコメントを削除できます';
+                }
+                
+                // 認証完了後にコメントシステムを初期化
+                window.commentSystem = new CommentSystem();
+                
+            } catch (error) {
+                console.error('認証エラー:', error);
+                authStatusEl.textContent = '認証に失敗しました - コメント機能が制限される場合があります';
+                isAuthenticated = false;
+                
+                // 認証失敗でもコメントシステムは初期化
+                window.commentSystem = new CommentSystem();
+            }
+        }
+
+        getSessionId() {
+            return userSessionId;
+        }
+
+        isAuthenticated() {
+            return isAuthenticated;
+        }
+    }
+
+    // コメント機能クラス（認証対応版）
+    class CommentSystem {
+        constructor() {
+            this.videoId = videoData.videoId;
+            this.initializeElements();
+            this.bindEvents();
+            this.loadComments();
+        }
+
+        initializeElements() {
+            this.commentAuthor = document.getElementById('commentAuthor');
+            this.commentContent = document.getElementById('commentContent');
+            this.commentSubmit = document.getElementById('commentSubmit');
+            this.commentsList = document.getElementById('commentsList');
+            this.commentsCount = document.getElementById('commentsCount');
+            this.commentsLoading = document.getElementById('commentsLoading');
+        }
+
+        bindEvents() {
+            this.commentSubmit.addEventListener('click', () => this.submitComment());
+            this.commentContent.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    this.submitComment();
+                }
+            });
+            
+            // リアルタイムで送信ボタンの状態を更新
+            [this.commentAuthor, this.commentContent].forEach(element => {
+                element.addEventListener('input', () => this.updateSubmitButton());
+            });
+        }
+
+        updateSubmitButton() {
+            const hasAuthor = this.commentAuthor.value.trim().length > 0;
+            const hasContent = this.commentContent.value.trim().length > 0;
+            this.commentSubmit.disabled = !(hasAuthor && hasContent && isAuthenticated);
+        }
+
+        async loadComments() {
+            if (!this.videoId) return;
+            
+            try {
+                this.showLoading(true);
+                
+                const headers = {
+                    'Content-Type': 'application/json'
+                };
+                
+                if (userSessionId) {
+                    headers['X-Session-ID'] = userSessionId;
+                }
+                
+                const response = await fetch(`/api/comments/${this.videoId}`, {
+                    headers: headers
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.renderComments(data.comments);
+                } else {
+                    console.error('コメント読み込みエラー:', data.error);
+                    this.showError('コメントの読み込みに失敗しました。');
+                }
+            } catch (error) {
+                console.error('コメント読み込みエラー:', error);
+                this.showError('コメントの読み込みに失敗しました。');
+            } finally {
+                this.showLoading(false);
+            }
+        }
+
+        async submitComment() {
+            const author = this.commentAuthor.value.trim();
+            const content = this.commentContent.value.trim();
+
+            if (!author || !content) {
+                this.showError('ユーザー名とコメント内容を入力してください。');
+                return;
+            }
+
+            if (!isAuthenticated || !userSessionId) {
+                this.showError('認証が必要です。ページを再読み込みしてください。');
+                return;
+            }
+
+            try {
+                this.commentSubmit.disabled = true;
+                this.commentSubmit.textContent = '投稿中...';
+                
+                const response = await fetch('/api/comments', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        video_id: this.videoId,
+                        author: author,
+                        content: content,
+                        session_id: userSessionId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    // フォームをクリア
+                    this.commentContent.value = '';
+                    this.updateSubmitButton();
+                    
+                    // コメント一覧を再読み込み
+                    await this.loadComments();
+                    
+                    this.showSuccess('コメントを投稿しました！');
+                } else {
+                    this.showError(data.error || 'コメントの投稿に失敗しました。');
+                }
+            } catch (error) {
+                console.error('コメント投稿エラー:', error);
+                this.showError('コメントの投稿に失敗しました。');
+            } finally {
+                this.commentSubmit.disabled = false;
+                this.commentSubmit.innerHTML = `
+                    <i class="material-icons" style="vertical-align: middle; margin-right: 4px; font-size: 16px;">send</i>
+                    コメントを投稿
+                `;
+                this.updateSubmitButton();
+            }
+        }
+
+        async deleteComment(commentId) {
+            if (!confirm('このコメントを削除しますか？')) return;
+            
+            if (!userSessionId) {
+                this.showError('認証が必要です。');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/api/comments/${commentId}`, {
+                    method: 'DELETE',
+                    headers: {
+                        'X-Session-ID': userSessionId
+                    }
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    await this.loadComments();
+                    this.showSuccess('コメントを削除しました。');
+                } else {
+                    this.showError(data.error || 'コメントの削除に失敗しました。');
+                }
+            } catch (error) {
+                console.error('コメント削除エラー:', error);
+                this.showError('コメントの削除に失敗しました。');
+            }
+        }
+
+        renderComments(comments) {
+            // コメント数を更新
+            this.commentsCount.textContent = comments.length;
+
+            if (comments.length === 0) {
+                this.commentsList.innerHTML = `
+                    <div class="no-comments">
+                        まだコメントがありません。最初のコメントを投稿してみましょう！
+                    </div>
+                `;
+                return;
+            }
+
+            this.commentsList.innerHTML = '';
+            comments.forEach(comment => {
+                const commentElement = this.createCommentElement(comment);
+                this.commentsList.appendChild(commentElement);
+            });
+        }
+
+        createCommentElement(comment) {
+            const div = document.createElement('div');
+            div.className = 'comment-item';
+            
+            const deleteButton = comment.can_delete ? 
+                `<button class="comment-delete" onclick="commentSystem.deleteComment(${comment.id})">
+                    <i class="material-icons" style="font-size: 16px; vertical-align: middle;">delete</i>
+                    削除
+                </button>` : '';
+            
+            div.innerHTML = `
+                <div class="comment-header">
+                    <span class="comment-author">${this.escapeHtml(comment.author)}</span>
+                    <span class="comment-time">${this.formatTime(comment.created_at)}</span>
+                </div>
+                <div class="comment-content">${this.escapeHtml(comment.content)}</div>
+                <div class="comment-actions">
+                    ${deleteButton}
+                </div>
+            `;
+            return div;
+        }
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        formatTime(timestamp) {
+            const now = new Date();
+            const time = new Date(timestamp);
+            const diffMs = now - time;
+            const diffMins = Math.floor(diffMs / (1000 * 60));
+            const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+            const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+            if (diffMins < 1) return 'たった今';
+            if (diffMins < 60) return `${diffMins}分前`;
+            if (diffHours < 24) return `${diffHours}時間前`;
+            if (diffDays < 7) return `${diffDays}日前`;
+            
+            return time.toLocaleDateString('ja-JP');
+        }
+
+        showLoading(show) {
+            if (show) {
+                this.commentsList.innerHTML = '<div class="loading">コメントを読み込み中...</div>';
+            }
+        }
+
+        showError(message) {
+            const toast = this.createToast(message, 'error');
+            document.body.appendChild(toast);
+            this.showToast(toast);
+        }
+
+        showSuccess(message) {
+            const toast = this.createToast(message, 'success');
+            document.body.appendChild(toast);
+            this.showToast(toast);
+        }
+
+        createToast(message, type) {
+            const toast = document.createElement('div');
+            const bgColor = type === 'error' ? '#f44336' : '#4caf50';
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${bgColor};
+                color: white;
+                padding: 12px 20px;
+                border-radius: 4px;
+                z-index: 10001;
+                font-size: 14px;
+                opacity: 0;
+                transition: opacity 0.3s;
+                max-width: 300px;
+            `;
+            toast.textContent = message;
+            return toast;
+        }
+
+        showToast(toast) {
+            setTimeout(() => toast.style.opacity = '1', 10);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => {
+                    if (toast.parentNode) {
+                        document.body.removeChild(toast);
+                    }
+                }, 300);
+            }, 3000);
+        }
+    }
+
+    // プレーヤー間の同期機能
+    function syncPlayers(sourcePlayer, targetPlayer) {
+        if (!sourcePlayer || !targetPlayer) return;
+        
+        const time = sourcePlayer.currentTime();
+        const volume = sourcePlayer.volume();
+        const isPaused = sourcePlayer.paused();
+        
+        targetPlayer.currentTime(time);
+        targetPlayer.volume(volume);
+        
+        if (isPaused) {
+            targetPlayer.pause();
+        } else {
+            targetPlayer.play();
+        }
+    }
+
+    // ミニプレーヤー表示/非表示
+    function showMiniPlayer() {
+        if (isMiniPlayerVisible) return;
+        
+        isMiniPlayerVisible = true;
+        const miniPlayerEl = document.getElementById('miniPlayer');
+        
+        // メインプレーヤーの状態をミニプレーヤーに同期
+        syncPlayers(mainPlayer, miniPlayer);
+        
+        miniPlayerEl.classList.add('visible');
+        
+        // メインプレーヤーを一時停止
+        mainPlayer.pause();
+    }
+
+    function hideMiniPlayer() {
+        if (!isMiniPlayerVisible) return;
+        
+        isMiniPlayerVisible = false;
+        const miniPlayerEl = document.getElementById('miniPlayer');
+        
+        // ミニプレーヤーの状態をメインプレーヤーに同期
+        syncPlayers(miniPlayer, mainPlayer);
+        
+        miniPlayerEl.classList.remove('visible');
+        
+        // ミニプレーヤーを一時停止
+        miniPlayer.pause();
+    }
+
+    // メインプレーヤーに戻る
+    function backToMain() {
+        hideMiniPlayer();
+        
+        // メインプレーヤーの位置までスクロール
+        const mainContainer = document.getElementById('mainVideoContainer');
+        mainContainer.scrollIntoView({ behavior: 'smooth' });
+        
+        // 少し遅延してからメインプレーヤーを再生
+        setTimeout(() => {
+            if (mainPlayer && !mainPlayer.paused()) {
+                mainPlayer.play();
+            }
+        }, 500);
+    }
+
+    // ミニプレーヤーを閉じる
+    function closeMiniPlayer() {
+        hideMiniPlayer();
+        miniPlayer.pause();
+    }
+
+    // スクロール監視
+    function checkVideoVisibility() {
+        if (isDragging) return;
+        
+        const mainContainer = document.getElementById('mainVideoContainer');
+        const rect = mainContainer.getBoundingClientRect();
+        const isVisible = rect.bottom > 0 && rect.top < window.innerHeight;
+        
+        // スクロール量がほぼ0（ページトップ付近）なら常にメインを優先
+        if (window.scrollY < 10) {
+            hideMiniPlayer();
+            return;
+        }
+        
+        if (!isVisible && !isMiniPlayerVisible && mainPlayer && !mainPlayer.paused()) {
+            showMiniPlayer();
+        } else if (isVisible && isMiniPlayerVisible) {
+            hideMiniPlayer();
+        }
+    }
+
+    // ミニプレーヤーのドラッグ機能
+    function makeDraggable() {
+        const miniPlayerEl = document.getElementById('miniPlayer');
+        let startX, startY, startLeft, startTop;
+        
+        miniPlayerEl.addEventListener('mousedown', function(e) {
+            if (e.target.closest('.mini-player-controls')) return;
+            
+            isDragging = true;
+            startX = e.clientX;
+            startY = e.clientY;
+            startLeft = parseInt(window.getComputedStyle(miniPlayerEl).left);
+            startTop = parseInt(window.getComputedStyle(miniPlayerEl).top);
+            
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', onMouseUp);
+            
+            e.preventDefault();
+        });
+        
+        function onMouseMove(e) {
+            if (!isDragging) return;
+            
+            const x = startLeft + e.clientX - startX;
+            const y = startTop + e.clientY - startY;
+            
+            // 画面境界チェック
+            const maxX = window.innerWidth - miniPlayerEl.offsetWidth;
+            const maxY = window.innerHeight - miniPlayerEl.offsetHeight;
+            
+            const clampedX = Math.max(0, Math.min(x, maxX));
+            const clampedY = Math.max(0, Math.min(y, maxY));
+            
+            miniPlayerEl.style.left = clampedX + 'px';
+            miniPlayerEl.style.top = clampedY + 'px';
+            miniPlayerEl.style.right = 'auto';
+            miniPlayerEl.style.bottom = 'auto';
+        }
+        
+        function onMouseUp() {
+            isDragging = false;
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+        }
+    }
+
+    // Video.js初期化と認証システム初期化
+    document.addEventListener('DOMContentLoaded', function() {
+        // 認証システム初期化
+        window.authSystem = new AuthSystem();
+        
+        // Video.js多重初期化防止
+        if (videojs.getPlayer('videoPlayer')) {
+            mainPlayer = videojs.getPlayer('videoPlayer');
+        } else {
+            mainPlayer = videojs('videoPlayer', {
+                fluid: true,
+                responsive: true,
+                playbackRates: [0.5, 1, 1.25, 1.5, 2],
+                html5: {
+                    hls: {
+                        enableLowInitialPlaylist: true,
+                        smoothQualityChange: true,
+                        overrideNative: true
+                    }
+                }
+            });
+        }
+
+        if (videojs.getPlayer('miniVideoPlayer')) {
+            miniPlayer = videojs.getPlayer('miniVideoPlayer');
+        } else {
+            miniPlayer = videojs('miniVideoPlayer', {
+                controls: false,
+                fluid: true,
+                html5: {
+                    hls: {
+                        enableLowInitialPlaylist: true,
+                        smoothQualityChange: true,
+                        overrideNative: true
+                    }
+                }
+            });
+        }
+
+        // メインプレーヤー準備完了
+        mainPlayer.ready(function() {
+            mainPlayer.src({
+                src: videoData.streamUrl,
+                type: 'application/x-mpegURL'
+            });
+            
+            mainPlayer.volume(currentVolume);
+            mainPlayer.muted(false);
+            showVolumeInfo(currentVolume);
+                // 再生地点復帰機能を初期化
+            
+            window.playbackProgress = new PlaybackProgress(videoData.videoId, mainPlayer);
+            // イベントリスナー
+            mainPlayer.on('volumechange', function() {
+                const volume = mainPlayer.volume();
+                const isMuted = mainPlayer.muted();
+                
+                if (!isMuted && volume > 0) {
+                    currentVolume = volume;
+                    localStorage.setItem('videoVolume', volume.toString());
+                }
+                
+                showVolumeInfo(isMuted ? 0 : volume);
+                
+                // ミニプレーヤーの音量も同期
+                if (miniPlayer) {
+                    miniPlayer.volume(volume);
+                    miniPlayer.muted(isMuted);
+                }
+            });
+            
+            mainPlayer.on('timeupdate', function() {
+                currentTime = mainPlayer.currentTime();
+            });
+        });
+
+        // ミニプレーヤー準備完了
+        miniPlayer.ready(function() {
+            miniPlayer.src({
+                src: videoData.streamUrl,
+                type: 'application/x-mpegURL'
+            });
+            
+            miniPlayer.volume(currentVolume);
+            miniPlayer.muted(false);
+        });
+
+        // スクロール監視開始（リサイズ時は遅延）
+        window.addEventListener('scroll', checkVideoVisibility);
+        let resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(checkVideoVisibility, 100);
+        });
+        
+        // ドラッグ機能初期化
+        makeDraggable();
+    });
+
+    // 履歴保存機能
+    function saveToHistory() {
+        if (!videoData.videoId) return;
+        
+        try {
+            const historyData = {
+                videoId: videoData.videoId,
+                title: videoData.title,
+                description: videoData.description + '...',
+                url: window.location.href,
+                timestamp: new Date().toISOString()
+            };
+            
+            let history = JSON.parse(localStorage.getItem('videoHistory') || '[]');
+            history = history.filter(function(item) {
+                return item.videoId !== videoData.videoId;
+            });
+            history.unshift(historyData);
+            
+            if (history.length > 10) {
+                history = history.slice(0, 10);
+            }
+            
+            localStorage.setItem('videoHistory', JSON.stringify(history));
+        } catch (error) {
+            console.warn('履歴の保存に失敗しました:', error);
+        }
+    }
+    // 再生地点管理クラス
+class PlaybackProgress {
+    constructor(videoId, player) {
+        this.videoId = videoId;
+        this.player = player;
+        this.saveInterval = null;
+        this.lastSavedTime = 0;
+        this.SAVE_INTERVAL = 5000; // 5秒間隔で保存
+        this.MIN_SAVE_TIME = 10; // 10秒以上再生した場合のみ保存
+        
+        this.init();
+    }
+    
+    init() {
+        // 保存された再生時間を取得
+        const savedTime = this.getSavedTime();
+        
+        if (savedTime > this.MIN_SAVE_TIME) {
+            this.showResumeNotification(savedTime);
+        }
+        
+        // プレーヤーイベントのバインド
+        this.player.on('loadeddata', () => {
+            if (savedTime > this.MIN_SAVE_TIME) {
+                this.player.currentTime(savedTime);
+            }
+        });
+        
+        this.player.on('play', () => {
+            this.startSaving();
+        });
+        
+        this.player.on('pause', () => {
+            this.stopSaving();
+            this.saveCurrentTime();
+        });
+        
+        this.player.on('ended', () => {
+            this.clearSavedTime();
+        });
+        
+        // ページ離脱時の保存
+        window.addEventListener('beforeunload', () => {
+            this.saveCurrentTime();
+        });
+    }
+    
+    getSavedTime() {
+        const key = `playback_${this.videoId}`;
+        const saved = localStorage.getItem(key);
+        return saved ? parseFloat(saved) : 0;
+    }
+    
+    saveCurrentTime() {
+        if (!this.player) return;
+        
+        const currentTime = this.player.currentTime();
+        const duration = this.player.duration();
+        
+        // 動画の90%以上再生している場合は保存しない（最後まで見た）
+        if (currentTime > this.MIN_SAVE_TIME && currentTime < duration * 0.9) {
+            const key = `playback_${this.videoId}`;
+            localStorage.setItem(key, currentTime.toString());
+            this.lastSavedTime = currentTime;
+        }
+    }
+    
+    clearSavedTime() {
+        const key = `playback_${this.videoId}`;
+        localStorage.removeItem(key);
+    }
+    
+    startSaving() {
+        if (this.saveInterval) return;
+        
+        this.saveInterval = setInterval(() => {
+            this.saveCurrentTime();
+        }, this.SAVE_INTERVAL);
+    }
+    
+    stopSaving() {
+        if (this.saveInterval) {
+            clearInterval(this.saveInterval);
+            this.saveInterval = null;
+        }
+    }
+    
+    showResumeNotification(savedTime) {
+        const minutes = Math.floor(savedTime / 60);
+        const seconds = Math.floor(savedTime % 60);
+        const timeText = minutes > 0 ? `${minutes}分${seconds}秒` : `${seconds}秒`;
+        
+        const notification = document.createElement('div');
+        notification.style.cssText = `
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--md-surface);
+            color: var(--md-on-surface);
+            padding: 12px 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            z-index: 10000;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            max-width: 400px;
+        `;
+        
+        notification.innerHTML = `
+            <i class="material-icons" style="color: var(--md-primary);">play_circle_filled</i>
+            <span>${timeText}から再生します</span>
+            <button onclick="this.parentElement.style.display='none'; playbackProgress.clearSavedTime(); mainPlayer.currentTime(0);" 
+                    style="background: var(--md-primary); color: white; border: none; padding: 4px 8px; border-radius: 4px; font-size: 12px; cursor: pointer;">
+                最初から
+            </button>
+            <button onclick="this.parentElement.style.display='none';" 
+                    style="background: none; border: none; color: var(--md-text-secondary); cursor: pointer; padding: 4px;">
+                <i class="material-icons" style="font-size: 16px;">close</i>
+            </button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        // 10秒後に自動で消す
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    if (notification.parentNode) {
+                        document.body.removeChild(notification);
+                    }
+                }, 300);
+            }
+        }, 100000);
+    }
+}
+// URL変換ユーティリティクラス
+class URLConverter {
+    constructor() {
+        // URLパターンの正規表現
+        this.urlRegex = /(https?:\/\/[^\s]+|www\.[^\s]+|[a-zA-Z0-9][a-zA-Z0-9-]*[a-zA-Z0-9]*\.([a-zA-Z]{2,})\S*)/gi;
+    }
+    
+    convertTextToLinks(text) {
+        if (!text) return text;
+        
+        return text.replace(this.urlRegex, (match) => {
+            let url = match;
+            
+            // プロトコルがない場合はhttps://を追加
+            if (!url.match(/^https?:\/\//)) {
+                url = 'https://' + url;
+            }
+            
+            // URLを安全にエスケープ
+            const safeUrl = this.escapeHtml(url);
+            const displayText = this.escapeHtml(match);
+            
+            return `<a href="${safeUrl}" 
+                       target="_blank" 
+                       rel="noopener noreferrer"
+                       class="description-link"
+                       title="外部サイトに移動します">${displayText}</a>`;
+        });
+    }
+    
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+}
+
+// 概要欄処理の拡張
+function processDescription() {
+    const descriptionText = document.getElementById('descriptionText');
+    if (!descriptionText) return;
+    
+    const originalText = descriptionText.textContent;
+    const urlConverter = new URLConverter();
+    const processedHtml = urlConverter.convertTextToLinks(originalText);
+    
+    // HTMLを安全に設定
+    descriptionText.innerHTML = processedHtml;
+}
+
+// ページ読み込み時に概要欄を処理
+document.addEventListener('DOMContentLoaded', function() {
+    // 既存の初期化処理...
+    
+    // 概要欄のURL変換を実行
+    processDescription();
+});
+async function loadRelatedVideos() {
+  const videoId = videoData.videoId;
+  const title = videoData.title;
+  const relatedDiv = document.getElementById('relatedVideos');
+  relatedDiv.innerHTML = '<div class="loading">関連動画を取得中...</div>';
+
+  try {
+    const res = await fetch(`/api/related?v=${encodeURIComponent(videoId)}&title=${encodeURIComponent(title)}`);
+    const data = await res.json();
+    if (!data.success || !Array.isArray(data.videos)) {
+      relatedDiv.innerHTML = '<div class="error">関連動画の取得に失敗しました。</div>';
+      return;
+    }
+    if (data.videos.length === 0) {
+      relatedDiv.innerHTML = '<div class="no-results">関連動画が見つかりませんでした。</div>';
+      return;
+    }
+    relatedDiv.innerHTML = data.videos.map(v => `
+      <center><div class="related-video-card" onclick="location.href='/watch?v=${v.id}'">
+        <img class="related-video-thumb" src="${v.thumbnail}" alt="サムネイル" loading="lazy">
+        <div class="related-video-info">
+          <div class="related-video-title">${escapeHtml(v.title)}</div>
+          <div class="related-video-uploader">${escapeHtml(v.uploader)}</div>
+        </div>
+      </div></center>
+    `).join('');
+  } catch (e) {
+    relatedDiv.innerHTML = '<div class="error">関連動画の取得に失敗しました。</div>';
+  }
+}
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+document.addEventListener('DOMContentLoaded', loadRelatedVideos);
+
+    // ページロード時とページ離脱時に履歴を保存
+    window.addEventListener('load', saveToHistory);
+    window.addEventListener('beforeunload', saveToHistory);
+</script>
+</body>
+</html>

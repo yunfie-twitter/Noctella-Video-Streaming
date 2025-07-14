@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>動画検索 - Noctella Video Streaming</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎬</text></svg>">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <style>
+        :root {
+            --md-background: #fafafa;
+            --md-surface: #fff;
+            --md-on-surface: #212121;
+            --md-primary: #3f51b5;
+            --md-secondary: #ff4081;
+            --md-text-secondary: #757575;
+        }
+        body.dark {
+            --md-background: #121212;
+            --md-surface: #1e1e1e;
+            --md-on-surface: #fff;
+            --md-primary: #90caf9;
+            --md-secondary: #f48fb1;
+            --md-text-secondary: #b0b0b0;
+        }
+        body {
+            background: var(--md-background);
+            color: var(--md-on-surface);
+            font-family: Roboto, "Helvetica Neue", Arial, sans-serif;
+            margin: 0; 
+            padding: 0;
+            transition: background 0.3s, color 0.3s;
+        }
+        .mdl-layout__header {
+            background: var(--md-primary) !important;
+        }
+        .mdl-layout-title { 
+            color: #fff !important; 
+            font-weight: 500; 
+        }
+        .mdl-navigation__link { 
+            color: #fff !important; 
+        }
+        .theme-button { 
+            color: #fff !important; 
+            margin-left: 8px; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 0 auto; 
+            padding: 24px 16px; 
+        }
+        .search-container {
+            background: var(--md-surface);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .search-form {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+        .search-input {
+            flex: 1;
+            padding: 12px 16px;
+            border: 2px solid var(--md-primary);
+            border-radius: 25px;
+            background: var(--md-surface);
+            color: var(--md-on-surface);
+            font-size: 16px;
+            outline: none;
+        }
+        .search-input:focus {
+            border-color: var(--md-secondary);
+        }
+        .search-button {
+            background: var(--md-primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 25px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+        .search-button:hover {
+            background: var(--md-secondary);
+        }
+        .search-button:disabled {
+            background: var(--md-text-secondary);
+            cursor: not-allowed;
+        }
+        .suggestions {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+        }
+        .suggestion-tag {
+            background: var(--md-primary);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .suggestion-tag:hover {
+            background: var(--md-secondary);
+        }
+        .results-container {
+            background: var(--md-surface);
+            border-radius: 8px;
+            padding: 24px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+        }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--md-text-secondary);
+        }
+        .results-count {
+            color: var(--md-text-secondary);
+            font-size: 14px;
+        }
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .video-card {
+            background: var(--md-surface);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+        }
+        .video-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+        }
+        .video-thumbnail {
+            position: relative;
+            width: 100%;
+            height: 180px;
+            background: #000;
+            overflow: hidden;
+        }
+        .video-thumbnail img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .video-duration {
+            position: absolute;
+            bottom: 8px;
+            right: 8px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+        }
+        .video-info {
+            padding: 16px;
+        }
+        .video-title {
+            font-size: 14px;
+            font-weight: 500;
+            line-height: 1.4;
+            margin-bottom: 8px;
+            color: var(--md-on-surface);
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .video-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--md-text-secondary);
+            font-size: 12px;
+        }
+        .video-uploader {
+            font-weight: 500;
+        }
+        .video-views {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: var(--md-text-secondary);
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: var(--md-text-secondary);
+        }
+        .error {
+            background: #ffebee;
+            color: #c62828;
+            padding: 16px;
+            border-radius: 4px;
+            margin: 16px 0;
+        }
+        body.dark .error {
+            background: #1a1a1a;
+            color: #ef5350;
+        }
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px 8px;
+            }
+            .search-form {
+                flex-direction: column;
+            }
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .suggestions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+    <header class="mdl-layout__header">
+        <div class="mdl-layout__header-row">
+            <span class="mdl-layout-title">
+                <i class="material-icons" style="vertical-align: middle; margin-right: 8px;">play_circle_filled</i>
+                Noctella
+            </span>
+            <div class="mdl-layout-spacer"></div>
+            <nav class="mdl-navigation">
+                <a class="mdl-navigation__link" href="/">ホーム</a>
+                <a class="mdl-navigation__link" href="/history">履歴</a>
+                <a class="mdl-navigation__link" href="/api/videos">API</a>
+                <button id="themeToggle" class="mdl-button mdl-js-button mdl-button--icon theme-button" title="テーマ切替">
+                    <i class="material-icons">dark_mode</i>
+                </button>
+            </nav>
+        </div>
+    </header>
+    <main class="mdl-layout__content">
+        <div class="container">
+            <!-- 検索フォーム -->
+            <div class="search-container">
+                <div class="search-form">
+                    <input type="text" id="searchInput" class="search-input" placeholder="動画を検索..." value="{{ query }}">
+                    <button id="searchButton" class="search-button">
+                        <i class="material-icons">search</i>
+                        検索
+                    </button>
+                </div>
+                
+                <!-- 検索候補 -->
+                <div class="suggestions" id="suggestions">
+                    <div class="loading">人気の検索キーワードを読み込み中...</div>
+                </div>
+            </div>
+            
+            <!-- 検索結果 -->
+            <div class="results-container" id="resultsContainer" style="display: none;">
+                <div class="results-header">
+                    <h2>検索結果</h2>
+                    <div class="results-count" id="resultsCount"></div>
+                </div>
+                <div class="results-grid" id="resultsGrid"></div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script>
+    // テーマ切替
+    const body = document.body;
+    const themeToggle = document.getElementById('themeToggle');
+    
+    function applyTheme(theme) {
+        if (theme === 'dark') {
+            body.classList.add('dark');
+            themeToggle.innerHTML = '<i class="material-icons">light_mode</i>';
+        } else {
+            body.classList.remove('dark');
+            themeToggle.innerHTML = '<i class="material-icons">dark_mode</i>';
+        }
+    }
+    
+    let currentTheme = localStorage.getItem('theme') || 'light';
+    applyTheme(currentTheme);
+    
+    themeToggle.addEventListener('click', function() {
+        currentTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        localStorage.setItem('theme', currentTheme);
+        applyTheme(currentTheme);
+    });
+
+    // 検索システム
+    class VideoSearch {
+        constructor() {
+            this.searchInput = document.getElementById('searchInput');
+            this.searchButton = document.getElementById('searchButton');
+            this.suggestionsEl = document.getElementById('suggestions');
+            this.resultsContainer = document.getElementById('resultsContainer');
+            this.resultsGrid = document.getElementById('resultsGrid');
+            this.resultsCount = document.getElementById('resultsCount');
+            
+            this.bindEvents();
+            this.loadSuggestions();
+            
+            // URLに検索クエリがある場合は自動検索
+            const urlQuery = new URLSearchParams(window.location.search).get('q');
+            if (urlQuery) {
+                this.searchInput.value = urlQuery;
+                this.performSearch(urlQuery);
+            }
+        }
+
+        bindEvents() {
+            this.searchButton.addEventListener('click', () => this.handleSearch());
+            this.searchInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    this.handleSearch();
+                }
+            });
+        }
+
+        handleSearch() {
+            const query = this.searchInput.value.trim();
+            if (!query) {
+                this.showError('検索キーワードを入力してください。');
+                return;
+            }
+            
+            // URLを更新
+            const newUrl = new URL(window.location);
+            newUrl.searchParams.set('q', query);
+            window.history.pushState({}, '', newUrl);
+            
+            this.performSearch(query);
+        }
+
+        async performSearch(query) {
+            try {
+                this.showLoading(true);
+                
+                const response = await fetch(`/api/search?q=${encodeURIComponent(query)}&limit=20`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    this.renderResults(data.results, data.query);
+                    this.saveSearchToHistory(query);
+                } else {
+                    this.showError(data.error || '検索に失敗しました。');
+                }
+            } catch (error) {
+                console.error('検索エラー:', error);
+                this.showError('検索に失敗しました。ネットワークを確認してください。');
+            } finally {
+                this.showLoading(false);
+            }
+        }
+
+        async loadSuggestions() {
+            try {
+                const response = await fetch('/api/search/suggestions');
+                const data = await response.json();
+                
+                if (data.success && data.suggestions.length > 0) {
+                    this.renderSuggestions(data.suggestions);
+                } else {
+                    this.suggestionsEl.innerHTML = '<div style="color: var(--md-text-secondary); font-size: 12px;">検索候補はありません</div>';
+                }
+            } catch (error) {
+                console.error('検索候補読み込みエラー:', error);
+                this.suggestionsEl.innerHTML = '';
+            }
+        }
+
+        renderSuggestions(suggestions) {
+            this.suggestionsEl.innerHTML = suggestions.map(suggestion => 
+                `<span class="suggestion-tag" onclick="videoSearch.searchFromSuggestion('${this.escapeHtml(suggestion.query)}')">${this.escapeHtml(suggestion.query)} (${suggestion.count})</span>`
+            ).join('');
+        }
+
+        searchFromSuggestion(query) {
+            this.searchInput.value = query;
+            this.performSearch(query);
+        }
+
+        renderResults(results, query) {
+            this.resultsContainer.style.display = 'block';
+            this.resultsCount.textContent = `"${query}" の検索結果: ${results.length}件`;
+            
+            if (results.length === 0) {
+                this.resultsGrid.innerHTML = '<div class="no-results">検索結果が見つかりませんでした。</div>';
+                return;
+            }
+            
+            this.resultsGrid.innerHTML = results.map(video => this.createVideoCard(video)).join('');
+        }
+
+        createVideoCard(video) {
+            const duration = this.formatDuration(video.duration);
+            const views = this.formatViews(video.view_count);
+            const thumbnail = video.thumbnail || '/static/default-thumbnail.jpg';
+            
+            return `
+                <div class="video-card" onclick="videoSearch.playVideo('${video.id}')">
+  <div class="video-thumbnail">
+    <img src="https://img.youtube.com/vi/${video.id}/maxresdefault.jpg" alt="サムネイル">
+    ${duration ? `<div class="video-duration">${duration}</div>` : ''}
+  </div>
+  <div class="video-info">
+    <div class="video-title">${this.escapeHtml(video.title)}</div>
+    <div class="video-meta">
+      <div class="video-uploader">${this.escapeHtml(video.uploader)}</div>
+      <div class="video-views">
+        <i class="material-icons" style="font-size: 12px;">visibility</i>
+        ${views}
+      </div>
+    </div>
+  </div>
+</div>
+
+            `;
+        }
+
+        playVideo(videoId) {
+            // 動画再生ページに遷移
+            window.location.href = `/watch?v=${encodeURIComponent(videoId)}`;
+        }
+
+        formatDuration(seconds) {
+            if (!seconds || seconds === 0) return '';
+            
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = seconds % 60;
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            } else {
+                return `${minutes}:${secs.toString().padStart(2, '0')}`;
+            }
+        }
+
+        formatViews(views) {
+            if (!views || views === 0) return '不明';
+            
+            if (views >= 1000000) {
+                return Math.floor(views / 100000) / 10 + 'M';
+            } else if (views >= 1000) {
+                return Math.floor(views / 100) / 10 + 'K';
+            } else {
+                return views.toString();
+            }
+        }
+
+        saveSearchToHistory(query) {
+            try {
+                let history = JSON.parse(localStorage.getItem('searchHistory') || '[]');
+                history = history.filter(item => item !== query);
+                history.unshift(query);
+                if (history.length > 20) {
+                    history = history.slice(0, 20);
+                }
+                localStorage.setItem('searchHistory', JSON.stringify(history));
+            } catch (error) {
+                console.warn('検索履歴の保存に失敗しました:', error);
+            }
+        }
+
+        showLoading(show) {
+            if (show) {
+                this.searchButton.disabled = true;
+                this.searchButton.innerHTML = '<i class="material-icons">hourglass_empty</i>検索中...';
+                this.resultsGrid.innerHTML = '<div class="loading">検索中...</div>';
+                this.resultsContainer.style.display = 'block';
+            } else {
+                this.searchButton.disabled = false;
+                this.searchButton.innerHTML = '<i class="material-icons">search</i>検索';
+            }
+        }
+
+        showError(message) {
+            this.resultsGrid.innerHTML = `<div class="error">${this.escapeHtml(message)}</div>`;
+            this.resultsContainer.style.display = 'block';
+        }
+
+        escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+    }
+
+    // 検索システム初期化
+    const videoSearch = new VideoSearch();
+</script>
+</body>
+</html>
