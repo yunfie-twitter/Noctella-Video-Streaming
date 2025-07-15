@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Noctella 管理ダッシュボード</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+  <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+  <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+  <style>
+    body {background:#f6f6fc; font-family:Roboto,Arial,sans-serif;}
+    .admin-container {max-width:980px; margin:40px auto; padding:32px;
+      background:white; border-radius:16px; box-shadow:0 4px 24px rgba(0,0,0,0.07);}
+    .stat-grid {display: flex; flex-wrap: wrap; gap: 24px;}
+    .stat-card {flex:1; min-width:200px; background:#f8fafc; padding:22px 18px; border-radius:12px; box-shadow:0 2px 8px rgba(0,0,0,0.06);}
+    .stat-title {font-weight:500; color:#3f51b5;}
+    .table-scroll {overflow-x:auto;}
+    table {border-collapse:collapse; width:100%;}
+    th,td {font-size:0.94em; padding:9px 7px; border-bottom:1px solid #e0e0e0;}
+    th {background:#eceff1;}
+    .op-btn {padding:2px 8px; font-size:14px; color:#fff; background:#f44336; border:none; border-radius:5px; cursor:pointer;}
+    .op-btn:hover {background:#b71c1c;}
+    .hlink {color:#3f51b5; text-decoration:underline; cursor:pointer;}
+  </style>
+</head>
+<body>
+  <div class="admin-container">
+    <h2 style="margin-top:0"><i class="material-icons" style="vertical-align:middle;">admin_panel_settings</i>
+      Noctella 管理ダッシュボード</h2>
+    <div class="stat-grid" id="statBox">
+      <div class="stat-card"><div class="stat-title">登録動画数</div><div id="stat-videos">-</div></div>
+      <div class="stat-card"><div class="stat-title">コメント総数</div><div id="stat-comments">-</div></div>
+      <div class="stat-card"><div class="stat-title">進行中ジョブ</div><div id="stat-jobs">-</div></div>
+    </div>
+    <hr>
+    <h3 style="margin-top:22px;">動画リスト</h3>
+    <div class="table-scroll"><table id="videosTable">
+      <thead>
+        <tr>
+          <th>video_id</th>
+          <th>タイトル</th>
+          <th>作成日</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table></div>
+    <hr>
+    <h3 style="margin-top:22px;">ジョブ状況</h3>
+    <div class="table-scroll"><table id="jobsTable">
+      <thead>
+        <tr>
+          <th>id</th>
+          <th>video_id</th>
+          <th>ステータス</th>
+          <th>進捗</th>
+          <th>操作</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table></div>
+  </div>
+<script>
+async function fetchStats() {
+  const vs = await fetch('/api/videos').then(r=>r.json());
+  const cs = await fetch('/api/comments_count').then(r=>r.json());
+  const js = await fetch('/api/queue').then(r=>r.json());
+  document.getElementById('stat-videos').textContent = (vs.length||0) + ' 件';
+  document.getElementById('stat-comments').textContent = cs.count != null ? (cs.count+'件') : '-';
+  document.getElementById('stat-jobs').textContent = js.processing_count ?? '-';
+}
+async function loadVideoTable() {
+  const t = document.querySelector("#videosTable tbody");
+  const vs = await fetch('/api/videos').then(r=>r.json());
+  t.innerHTML = vs.map(v=>`
+   <tr>
+    <td><span class="hlink" onclick="location.href='/watch?v=${v.video_id}'">${v.video_id}</span></td>
+    <td>${v.title||''}</td>
+    <td>${v.created_at||''}</td>
+    <td><button class="op-btn" onclick="deleteVideo('${v.video_id}')">削除</button></td>
+   </tr>
+  `).join('');
+}
+async function loadJobTable() {
+  const t = document.querySelector("#jobsTable tbody");
+  const q = await fetch('/api/queue').then(r=>r.json());
+  const all = (q.active_jobs||[]).concat(q.waiting_jobs||[]);
+  t.innerHTML = all.map(j=>`
+    <tr>
+      <td>${j.id}</td>
+      <td>${j.video_id}</td>
+      <td>${j.status||'-'}</td>
+      <td>${j.progress ? j.progress + '%' : '-'}</td>
+      <td><button class="op-btn" onclick="deleteJob(${j.id})">中止</button></td>
+    </tr>
+  `).join('');
+}
+async function deleteVideo(video_id) {
+  if (!confirm('本当に削除しますか？')) return;
+  const r = await fetch('/api/admin/delete_video', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({video_id})});
+  if (await r.json()) loadVideoTable();
+}
+async function deleteJob(job_id) {
+  if (!confirm('ジョブを中止/削除しますか？')) return;
+  const r = await fetch('/api/admin/delete_job', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({job_id})});
+  if (await r.json()) loadJobTable();
+}
+fetchStats();  loadVideoTable();  loadJobTable();
+</script>
+</body>
+</html>
