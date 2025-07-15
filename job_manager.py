@@ -129,7 +129,7 @@ class JobManager:
             
             # m3u8抽出
             result = subprocess.run(
-                ['python', 'm3u8_extractor.py', url, '--json'],
+                ['python3', 'm3u8_extractor.py', url, '--json'],
                 capture_output=True,
                 text=True,
                 timeout=120
