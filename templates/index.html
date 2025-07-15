@@ -8,6 +8,12 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+    <link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#3f51b5">
+<!-- iOS向け -->
+<link rel="apple-touch-icon" href="/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+
     <style>@media screen and (max-width: 1024px) {
     .mdl-layout__header-row {
         height: 56px;
@@ -301,6 +307,10 @@
 
 
 <script>
+    if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/service-worker.js").catch(console.error);
+}
+
 // サムネイルや日付フォーマットなど共通関数
 function escapeHtml(s) {
   return (''+s).replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
