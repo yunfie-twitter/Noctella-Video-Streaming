@@ -25,6 +25,22 @@ os.makedirs(HLS_DIR, exist_ok=True)
 # ルーティング - メインページ
 # ==============================
 
+@app.route('/manifest.json')
+def manifest():
+    return send_from_directory('static', 'manifest.json')
+
+@app.route('/icon-512.png')
+def icon1():
+    return send_from_directory('static', 'icon-512.png')
+
+@app.route('/icon-192.png')
+def icon2():
+    return send_from_directory('static', 'icon-192.png')
+
+@app.route('/service-worker.js')
+def swjs():
+    return send_from_directory('static', 'service-worker.js')
+
 @app.route('/')
 def index():
     """メインページ"""
